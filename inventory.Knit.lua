@@ -90,21 +90,86 @@ function module:ItemsRemovedForClient(plr,item)
 	local backpack = plr:WaitForChild("Backpack")
 	local character = plr.Character or plr.CharacterAdded:Wait()
 	if character:FindFirstChild(item) then
-		self.Client.ItemsRemovedClient:Fire(plr,{Remove_result = "Item removed : "..item.." !" ,removeMessage = "Tool .. "..item.." retiré" ,oldTool_Owner = plr})
+		self.Client.ItemsRemoveClient:Fire(plr,{Remove_result = "Item removed : "..item.." !" ,removeMessage = "Tool .. "..item.." retiré" ,oldTool_Owner = plr})
 		character:FindFirstChild(item):Destroy()
-		return true
-	elseif backpack:FindFirstChild(item) then
-		self.Client.ItemsRemovedClient:Fire(plr,{Remove_result = "Item removed : "..item.." !" ,removeMessage = "Tool .."..item.." retiré" ,oldTool_Owner = plr})
+	end
+	if backpack:FindFirstChild(item) then
+		self.Client.ItemsRemoveClient:Fire(plr,{Remove_result = "Item removed : "..item.." !" ,removeMessage = "Tool .. "..item.." retiré" ,oldTool_Owner = plr})
 		backpack:FindFirstChild(item):Destroy()
-		return true
-	else
-		warn("Bug trouvé pendant la suppression de l'objet ("..item..")")
-		return false
 	end
 end
 
 function module.Client:RemoveObject(plr,item)
 	return self.Server:ItemsRemovedForClient(plr,item)
+end
+
+function module:Equip(plr : Player,item)
+	assert(plr:IsDescendantOf(Players),"argument (plr) is not a Member of PlayersService")
+	local backpack = plr:WaitForChild("Backpack")
+	local obj = backpack:FindFirstChild(item)
+	if (obj) then
+		print("[Knit (Server) ] Equip Started")
+		local c = obj:Clone()
+		c.Parent = plr.Character or plr.CharacterAdded:Wait()
+		return true
+	end
+	return false
+end
+
+function module:GetItemFromBackpackChid(plr,item)
+	assert(plr:IsDescendantOf(Players),"argument (plr) is not a Member of PlayersService")
+	local backpack = plr:WaitForChild("Backpack")
+	if (backpack:FindFirstChild(tostring(item))) then
+		return backpack:FindFirstChild(tostring(item)).Name
+	else
+		return false
+	end
+end
+
+function module:GetItemFromCharacterChid(plr,item)
+	if (item) and (plr) then
+		local character = plr.Character or plr.CharacterAdded:Wait()
+		if (character) then
+			if (character:FindFirstChild(tostring(item))) then
+				return character:FindFirstChild(tostring(item))
+			else
+				return false
+			end
+		end
+	end
+end
+
+function module.Client:Equip(plr,item)
+	local getItem = self.Server:GetItemFromBackpackChid(plr,tostring(item))
+	if (getItem ~= false) then
+		return self.Server:Equip(plr,item)
+	else
+		return warn("failed to get: ["..tostring(item).."]")
+	end
+end
+
+function module:UnEquip(plr,item)
+	if (item) and (plr) then
+		print("[Knit (Server) ] UnEquip Started")
+		local character = plr.Character or plr.CharacterAdded:Wait()
+		if (character) then
+			if (character:FindFirstChild(tostring(item))) then
+				character:FindFirstChild(tostring(item)):Remove()
+				return true
+			else
+				return warn("failed to remove: ["..tostring(item).."]")
+			end
+		end
+	end
+end
+
+function module.Client:UnEquip(plr,item)
+	local getItem = self.Server:GetItemFromCharacterChid(plr,tostring(item))
+	if (getItem ~= false) then
+		return self.Server:UnEquip(plr,getItem)
+	else
+		return warn("failed to get: ["..tostring(item).."]")
+	end
 end
 
 function module.Client:ReceivedAddedItems(plr,item)
